@@ -9,10 +9,11 @@ using static SearchCommon;
 using static RbyIGTChecker<Red>;
 using System.Dynamic;
 using System.Data;
+using System.Net;
 
 class Extended
 {
-    static bool CheckEncounter(int address, Red gb, string pokename, IGTResult res)
+    public static bool CheckEncounter(int address, Red gb, string pokename, IGTResult res)
     {
         if(address != gb.WildEncounterAddress)
             return false;
@@ -95,7 +96,7 @@ class Extended
         gb.CpuWrite("wPlayTimeSeconds", 43);
         gb.CpuWrite("wPlayTimeFrames", 1);
         intro.ExecuteAfterIGT(gb);
-        var wp = ReadWeedlePaths()[357 - 1];
+        var wp = ReadWeedlePaths()[225 - 1];
         gb.CpuWriteBE("wPartyMon1Attack", (ushort) wp.Atk);
         gb.CpuWriteBE("wPartyMon1Defense", (ushort) wp.Def);
         // gb.CpuWriteBE("wPartyMon1Speed", (ushort) 10);
@@ -227,13 +228,14 @@ class Extended
 
                     gb.ClearTextUntil(Joypad.B, gb.SYM["EnterMap"]);
                     // gb.AdvanceFrames(30);
-                // gb.SaveState(name2+"3a.gqs");
-                // gb.SaveState(name2+"2.gqs");
-                //     gb.ClearText(Joypad.B);
-                // gb.SaveState(name2+"3.gqs");
-                // gb.Execute("L");
-                // gb.SaveState(name2+"4.gqs");
-                    gb.Execute(SpacePath(wp.PostFight+"UUUUU"));
+                    // gb.SaveState(name2+"3a.gqs");
+                    // gb.SaveState(name2+"2.gqs");
+                    //     gb.ClearText(Joypad.B);
+                    // gb.SaveState(name2+"3.gqs");
+                    // gb.Execute("L");
+                    // gb.SaveState(name2+"4.gqs");
+                    // gb.Execute(SpacePath(wp.PostFight+"UUUUU"));
+                    gb.Execute(SpacePath("LUUUUUUUUUUUUU"));
                     Trace.Listeners.Remove(name2);
                     // return;
                 }
@@ -371,7 +373,7 @@ class Extended
         PersistentGbs = null;
     }
 
-    static List<IGTResult> CheckIGT(int framesToWait, string path, string forest, int numFrames = 60, int numThreads = 16, int startFrame = 0, bool verbose = true)
+    public static List<IGTResult> CheckIGT(int framesToWait, string path, string forest, int numFrames = 60, int numThreads = 16, int startFrame = 0, bool verbose = true)
     {
         BuildStates();
         RedCb[] gbs = MultiThread.MakeThreads<RedCb>(numThreads);
@@ -492,7 +494,7 @@ class Extended
         return address;
     }
 
-    enum PrintFlags
+    public enum PrintFlags
     {
         None = 0,
         List = 1,
@@ -536,7 +538,7 @@ class Extended
         }
         return line;
     }
-    static Dictionary<string, int> GetIGTSummary(List<IGTResult> results, PrintFlags flags = PrintFlags.Info)
+    public static Dictionary<string, int> GetIGTSummary(List<IGTResult> results, PrintFlags flags = PrintFlags.Info)
     {
         results.Sort(delegate (IGTResult a, IGTResult b) {
             return (a.IGTSec * 60 + a.IGTFrame).CompareTo(b.IGTSec * 60 + b.IGTFrame);
@@ -989,7 +991,8 @@ class Extended
     };
     static string[] Forest = { "",
         "RUULLLLLUUU" + "RUUUUUUU" + "UUUURRRRRURRRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUALLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDDLDLLLLUUU",       // 1
-        "UUUULLLLLU" + "UUUUURUU" + "UUAUURUARRRRRRRUUUUUUUUUUUAUUAUUUUUUUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDDLDLLLLUUU",     // 2
+        // "UUUULLLLLU" + "UUUUURUU" + "UUAUURUARRRRRRRUUUUUUUUUUUAUUAUUUUUUUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDDLDLLLLUUU",     // 2
+        "UAULALLLLAUUU" + "UUUUUURU" + "UUUURRRRUURRRRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDLDDLLLLUUU", // 2 quint
         "UUUAULLLLLU" + "RUUUUUUU" + "UUURURRURRRRRUAUUUUUUUUUUUUUUUUUUAUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDDDLLLLLUAUU",     // 3
         "UUUUULLLLLU" + "UUUUUURU" + "UUUURURRRRRRRAUUUAUUUAUUUUUUUUUUUUUUUAUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDADDADDADDDDDDDDDDLLLLLAUUU",// 4
         "UUUULLLLLU" + "UUUURUUU" + "UUUURRRRRRRURAUUUUUAUUUUUUAUUUUUUUUUUUUUUUUUAUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDDDLLLLLAUUU",    // 5
@@ -1010,7 +1013,7 @@ class Extended
     {
         return path > 2 ? path + 1 : path;
     }
-    static int FramePath(int frame)
+    public static int FramePath(int frame)
     {
         return frame > 2 ? frame - 1 : frame;
     }
@@ -1242,12 +1245,12 @@ class Extended
                 if(gb.BattleMon.HP <= lasthp - 5) crit = true;
                 gb.Press(Joypad.A, Joypad.Select, Joypad.A); // t6
                 log += LogTurn(gb);
-                if(gb.EnemyMon.HP == 0 && !gb.BattleMon.Poisoned && gb.BattleMon.HP >= hp - 6 && !crit)
+                if (gb.EnemyMon.HP == 0 && !gb.BattleMon.Poisoned && gb.BattleMon.HP >= hp - 6 && !crit)
                 {
                     Increment(ref score15);
-                    if(igtf > igtf1 && igtf < igtf2) Increment(ref score9);
-                    lock(goodnpcs) { goodnpcs.Add(npcs); }
-                    if(successes != null) successes.Add(gb.SaveState());
+                    if (igtf > igtf1 && igtf < igtf2) Increment(ref score9);
+                    lock (goodnpcs) { goodnpcs.Add(npcs); }
+                    if (successes != null) successes.Add(gb.SaveState());
                 }
                 if(print) result[it * weedleframes + weedleframe] = log;
             }
@@ -1306,7 +1309,7 @@ class Extended
             if(r2.Success)
                 paths.Add(new WeedlePath(int.Parse(r1.Groups[1].Value), int.Parse(r1.Groups[2].Value), int.Parse(r1.Groups[3].Value), int.Parse(r1.Groups[4].Value), int.Parse(r1.Groups[5].Value), r2.Groups[5].Value, int.Parse(r2.Groups[1].Value), int.Parse(r2.Groups[2].Value), r2.Groups[3].Value, r2.Groups[4].Value, r2.Groups[6].Value));
             else
-                paths.Add(new WeedlePath(int.Parse(r1.Groups[1].Value), int.Parse(r1.Groups[2].Value), int.Parse(r1.Groups[3].Value), int.Parse(r1.Groups[4].Value), int.Parse(r1.Groups[5].Value), ""));
+                paths.Add(new WeedlePath(int.Parse(r1.Groups[1].Value), int.Parse(r1.Groups[2].Value), int.Parse(r1.Groups[3].Value), int.Parse(r1.Groups[4].Value), int.Parse(r1.Groups[5].Value), Forest[2]));
         }
         return paths;
     }
@@ -1329,7 +1332,7 @@ class Extended
             MaxHP = maxhp;
             P = p;
             Path = new SearchCommon.Path(path);
-            if(npcs == "" && path != "")
+            if (npcs == "" && path != "")
             {
                 var r = Weedle(p, path, 30, false, atk, def, hp, maxhp);
                 s15 = r.s15;
@@ -1531,20 +1534,20 @@ class Extended
         //     Trace.WriteLine(p.ToString());
         // }
 
-        int path = 3;
+        // int path = 3;
         // CheckPathsInFile(PathFrame(path), Pidgey[path], true, 5, "CATERPIE");
         // Check(path);
         // SearchForest(path);
         // SingleSearchForest(PathFrame(path), Pidgey[path], null, 16, 20, 22, 22);
         // string forest = "UAUULALLLLUAUUUUUURUUUUUURRRRRRRURUUUUUAUUUUUUUUUUUUUUUUUUUUUAUUUUUUULLLLLALLLDDDADDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDADDDLDDDADLLLLLUUU"; // 2
-        string forest = "UUUAULLLLLURUUUUUUUUUURURRURRRRRUAUUUUUUUUUUUUUUUUUUAUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDADDDDLRLLLLDUALLUUU"; // 3
+        // string forest = "UUUAULLLLLURUUUUUUUUUURURRURRRRRUAUUUUUUUUUUUUUUUUUUAUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDADDDDLRLLLLDUALLUUU"; // 3
         // string forest = "UUUUULLLLLAUUUUUURAUUUUUURRRRURRRRUUUAUUUUUUUUUUUUUUUUUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDLDDDLLLLUULU"; // 4
         // string forest = "UULALLLLUUUUUUURAUUAUUUUURRRUURRARRRUUUUUUUUUUUUUUUUUUUUUUUUUUAUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDDDLLLLLLUUU"; // 5
         // string forest = "UAUUAUUULLLALLAUURUUUUUUUUURURUURRRRRRUUUUUUUUUUUUUUUUUUUUUUUUUUUAUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDLDDDADDLLLLLUAUU"; // 6
-        for(int s = 0; s < 60; ++s)
-        {
-            Trace.WriteLine(s);
-            GetIGTSummary(CheckIGT(PathFrame(path), Pidgey[path], forest, 5, 5, 60 * s), PrintFlags.All);
-        }
+        // for(int s = 0; s < 60; ++s)
+        // {
+        //     Trace.WriteLine(s);
+        //     GetIGTSummary(CheckIGT(PathFrame(path), Pidgey[path], forest, 5, 5, 60 * s), PrintFlags.All);
+        // }
     }
 }

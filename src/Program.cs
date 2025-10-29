@@ -17,6 +17,7 @@ class Program {
 
         // Tests.RunAllTests();
 
-        new Extended();
+        new ExtendedWeedle();
+        // new ExtWeedleSearch();
     }
 }

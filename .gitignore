@@ -20,7 +20,10 @@ SDL2.dll
 *.png
 *.bmp
 *.txt
+*.json
 *.bin
 *.gqs
 movies/*
 rng-cache/*
+pokemon.sln
+.aider*
