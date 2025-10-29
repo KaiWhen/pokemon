@@ -35,7 +35,7 @@ public class ExtendedWeedle
         public string postFight { get; set; }
         public string link { get; set; }
         public string npcs { get; set; }
-        public int pidgeypath { get; set; }
+        public string path { get; set; }
         public List<int> frames { get; set; }
         public List<int> igtSecs { get; set; }
         public int score { get; set; }
@@ -81,15 +81,6 @@ public class ExtendedWeedle
     };
 
     static SortedSet<int> IgnoredFramesP2 = new SortedSet<int> { 10, 11, 12, 13, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38 };
-
-    static bool CheckNoEncounter(int address, Red gb, IGTResult res)
-    {
-        if (address != gb.WildEncounterAddress)
-            return true;
-
-        res.Mon = gb.EnemyMon;
-        return false;
-    }
 
     static void SortFrames(List<int> frames)
     {
@@ -149,8 +140,8 @@ public class ExtendedWeedle
             result.Add(merged);
         }
         
-        // accept only 3-5 frame window
-        result = result.Where(g => g.Count >= 3 && g.Count < 6).ToList();
+        // accept only 3-6 frame window
+        result = result.Where(g => g.Count >= 3 && g.Count < 7).ToList();
         result = result.OrderByDescending(g => g.First()).ToList();
         return result;
     }
@@ -340,6 +331,7 @@ public class ExtendedWeedle
         if (print) Trace.WriteLine(info);
         SortFrames(successfulFrames);
         frameLogs.Sort();
+        foreach (var gb in gbs) gb.Dispose();
         return (info, score1, score2, score15, score9, npc, successfulFrames, frameLogs);
     }
 
@@ -394,7 +386,7 @@ public class ExtendedWeedle
             }
             if (!enc)
             {
-                score++;
+                score+=3;
                 if (igtf == igtf1 || igtf == igtf2) return;
                 gb.CpuWriteBE("wPartyMon1Attack", (ushort)atk);
                 gb.CpuWriteBE("wPartyMon1Defense", (ushort)def);
@@ -496,6 +488,7 @@ public class ExtendedWeedle
         string npc = "";
         foreach (string s in goodnpcs) if (npc == "") npc = s; else npc += " or " + s;
         if (successes.Count < 9) score = -9999;
+        foreach (var gb in gbs) gb.Dispose();
         return (score, npc, frameLogs);
     }
 
@@ -641,58 +634,6 @@ public class ExtendedWeedle
         }
         return paths;
     }
-    static void WriteWeedlePaths(List<WeedlePath> paths, bool js = false)
-    {
-        foreach (WeedlePath p in paths.OrderBy(p => p.P).ThenBy(p => p.MaxHP).ThenBy(p => p.HP).ThenBy(p => p.Atk).ThenBy(p => p.Def))
-            if (js == false || p.S9 > 7)
-                Trace.WriteLine(p.ToString(js));
-    }
-    public class WeedlePath
-    {
-        public int HP, MaxHP, Atk, Def, P, S15, S9;
-        public string Npcs, Igts, PostFight;
-        SearchCommon.Path Path;
-        public List<byte[]> successes;
-        public WeedlePath(int atk, int def, int hp, int maxhp, int p, string path, int s15 = 0, int s9 = 0, string npcs = "", string igts = "", string postfight = "")
-        {
-            Atk = atk;
-            Def = def;
-            HP = hp;
-            MaxHP = maxhp;
-            P = p;
-            Path = new SearchCommon.Path(path);
-            if (npcs == "" && path != "")
-            {
-                var r = Weedle(p, path, 0, 4, 30, false, atk, def, hp, maxhp, true, successes);
-                s15 = r.s15;
-                s9 = r.s9;
-                npcs = r.npc;
-            }
-            S15 = s15;
-            S9 = s9;
-            Npcs = npcs;
-            Igts = igts;
-            PostFight = postfight;
-        }
-        public string ToString(bool js = false)
-        {
-            RbyTile t = EndTile(Pidgey[P]);
-            if (js) return $"[{Atk}, {Def}, {HP}, {MaxHP}, {P}, {S15}, {S9}, '{Npcs}', '{Igts}', 'https://gunnermaniac.com/pokeworld?local=51#{t.X + 13}/{t.Y + 11}/{Path.P}{PostFight}'],";
-            if (S15 == 0) return $"{Atk} {Def} {HP}/{MaxHP} p{P}";
-            return $"{Atk} {Def} {HP}/{MaxHP} p{P} - {S15}/{S9} - {Npcs} - {Igts} - https://gunnermaniac.com/pokeworld?local=51#{t.X + 13}/{t.Y + 11}/{Path.P} - {PostFight}";
-        }
-    }
-
-    // void WeedleExt()
-    // {
-    //     var wpaths = ReadWeedlePaths();
-
-    //     foreach (var wp in wpaths)
-    //     {
-    //         Trace.WriteLine(wp.ToString());
-    //     }
-
-    // }
 
     void WeedleRecordTest()
     {
@@ -921,7 +862,7 @@ public class ExtendedWeedle
         return separated;
     }
 
-    static void FindBestWeedlePaths(string inputFile, string outputFile, bool antidote)
+    static void FindBestWeedlePaths(string inputFile, string outputFile, int pidgeypath, bool antidote)
     {
         string link = "https://gunnermaniac.com/pokeworld?local=51#21/59/";
         var paths = ParseSuccessfulFrames(inputFile);
@@ -943,6 +884,7 @@ public class ExtendedWeedle
                 var statKey = (hp, maxhp, atk, def);
                 seenStats.Add(statKey);
             }
+            finalPaths = pathData;
         }
 
         foreach (var stat in paths)
@@ -970,12 +912,12 @@ public class ExtendedWeedle
                     if (currLargestWindow >= frameWindow && bestIgtSecs.Count <= 7) continue;
                     currLargestWindow = Math.Max(currLargestWindow, frameWindow);
                     List<byte[]> states = new List<byte[]>();
-                    var res = EvalWeedle(2, path.Key, igtf1, igtf2, 30, atk, def, hp, maxhp, antidote, successes: states);
+                    var res = EvalWeedle(pidgeypath, path.Key, igtf1, igtf2, 30, atk, def, hp, maxhp, antidote, successes: states);
                     int successes = states.Count;
                     SortedSet<int> igtSecs;
                     if (successes >= 9)
                     {
-                        igtSecs = CheckWeedleIgtSecond(2, path.Key, igtf1, igtf2, atk, def, hp, maxhp, successes, antidote);
+                        igtSecs = CheckWeedleIgtSecond(pidgeypath, path.Key, igtf1, igtf2, atk, def, hp, maxhp, successes, antidote);
                         int score = res.score - (igtSecs.Count * igtSecDeduction);
                         // int score = res.score;
                         if (score > bestScore)
@@ -1005,12 +947,12 @@ public class ExtendedWeedle
                         if (currLargestWindow >= frameWindow && bestIgtSecs.Count <= 7) continue;
                         currLargestWindow = Math.Max(currLargestWindow, frameWindow);
                         List<byte[]> states = new List<byte[]>();
-                        var res = EvalWeedle(2, path.Key, igtf1, igtf2, 30, atk, def, hp, maxhp, successes: states);
+                        var res = EvalWeedle(pidgeypath, path.Key, igtf1, igtf2, 30, atk, def, hp, maxhp, successes: states);
                         int successes = states.Count;
                         SortedSet<int> igtSecs;
                         if (successes >= 9)
                         {
-                            igtSecs = CheckWeedleIgtSecond(2, path.Key, igtf1, igtf2, atk, def, hp, maxhp, successes, antidote);
+                            igtSecs = CheckWeedleIgtSecond(pidgeypath, path.Key, igtf1, igtf2, atk, def, hp, maxhp, successes, antidote);
                             int score = res.score - (igtSecs.Count * igtSecDeduction);
                             // int score = res.score;
                             if (score > bestClusterScore)
@@ -1042,6 +984,9 @@ public class ExtendedWeedle
                 string postFight = ExtWeedleSearch.SearchPostWeedle(8, 42, bestStates);
                 List<string> separatedPaths = SeparateForestPath(bestPath);
                 string keyString = "(" + hp + "," + maxhp + "," + atk + "," + def + ")";
+                string pathString = "";
+                if (antidote) pathString = pidgeypath + "a";
+                else pathString = pidgeypath + "b";
                 if (!finalPaths.ContainsKey(keyString))
                 {
                     finalPaths[keyString] = new PathInfo
@@ -1052,7 +997,7 @@ public class ExtendedWeedle
                         postFight = postFight,
                         link = link + bestPath + postFight,
                         npcs = bestNpcs,
-                        pidgeypath = 2,
+                        path = pathString,
                         frames = bestFrames,
                         igtSecs = bestIgtSecs.ToList(),
                         score = bestScore,
@@ -1100,7 +1045,7 @@ public class ExtendedWeedle
             });
             int score = pathData[stat.Key].score;
             var oldIgtSecs = pathData[stat.Key].igtSecs;
-            Console.WriteLine(set.ToList().Count - oldIgtSecs.ToList().Count);
+            // Console.WriteLine(set.ToList().Count - oldIgtSecs.ToList().Count);
             pathData[stat.Key].score = score - ((set.ToList().Count - oldIgtSecs.ToList().Count) * 4);
             pathData[stat.Key].igtSecs = set.ToList();
         }
@@ -1121,13 +1066,39 @@ public class ExtendedWeedle
         return set;
     }
 
-    void ComparePathScores(string file1, string file2)
+    void ComparePathScores(string file1, string file2, string outputFile)
     {
         string json1 = File.ReadAllText(file1);
         var pathData1 = JsonSerializer.Deserialize<Dictionary<string, PathInfo>>(json1);
         string json2 = File.ReadAllText(file2);
         var pathData2 = JsonSerializer.Deserialize<Dictionary<string, PathInfo>>(json2);
-        // wip
+        var mergedPaths = new Dictionary<string, PathInfo>();
+    
+        foreach (var stat in pathData1)
+        {
+            mergedPaths[stat.Key] = stat.Value;
+        }
+        
+        foreach (var stat in pathData2)
+        {
+            string key = stat.Key;
+            PathInfo path2 = stat.Value;
+            
+            if (mergedPaths.ContainsKey(key))
+            {
+                if (path2.score > mergedPaths[key].score)
+                {
+                    mergedPaths[key] = path2;
+                }
+            }
+            else
+            {
+                mergedPaths[key] = path2;
+            }
+        }
+        
+        using var stream = File.Create(outputFile);
+        JsonSerializer.Serialize(stream, mergedPaths, new JsonSerializerOptions { WriteIndented = true });
     }
 
     public ExtendedWeedle()
@@ -1166,7 +1137,7 @@ public class ExtendedWeedle
         // Console.WriteLine("state count: " + states.Count);
 
         // CheckWeedlePaths();
-        // var pathFrames = ParseSuccessfulFrames("weedle/p2f6_noanti/p2f6g3_frames.txt");
+        // var pathFrames = ParseSuccessfulFrames("weedle/p2f6_noanti/p2f6g2_frames.txt");
         // foreach (var stat in pathFrames)
         // {
         //     bool existsPath = false;
@@ -1182,11 +1153,13 @@ public class ExtendedWeedle
         // FindBestWeedlePaths("weedle/p2f0/p2f0_frames.txt", "weedle/p2f0/p2f0.json", true);
         // RecheckWeedleIgtSecond("weedle/p2f0/p2f0.json", "weedle/p2f0/p2f0_sec.json", true);
 
-        CheckWeedlePaths("weedle/p2f6_noanti/p2f6g2_paths.txt", "weedle/p2f6_noanti/p2f6g2_frames.txt", false);
-        FindBestWeedlePaths("weedle/p2f6_noanti/p2f6g2_frames.txt", "weedle/p2f6_noanti/p2f6g2.json", false);
-        RecheckWeedleIgtSecond("weedle/p2f6_noanti/p2f6g2.json", "weedle/p2f6_noanti/p2f6g2_secs.json", false);
+        // CheckWeedlePaths("weedle/p2f6_noanti/p2f6g2_paths.txt", "weedle/p2f6_noanti/p2f6g2_frames.txt", false);
+        // FindBestWeedlePaths("weedle/p2f6_noanti/p2f6g2_frames.txt", "weedle/p2f6_noanti/p2f6g2.json", false);
+        // RecheckWeedleIgtSecond("weedle/p2f6_noanti/p2f6g2.json", "weedle/p2f6_noanti/p2f6g2_secs.json", false);
 
-        FindBestWeedlePaths("weedle/p2f6_noanti/p2f6g3_frames.txt", "weedle/p2f6_noanti/p2f6g3.json", false);
-        RecheckWeedleIgtSecond("weedle/p2f6_noanti/p2f6g3.json", "weedle/p2f6_noanti/p2f6g3_secs.json", false);
+        // FindBestWeedlePaths("weedle/p2f6_noanti/p2f6g3_frames.txt", "weedle/p2f6_noanti/p2f6g3.json", false);
+        // RecheckWeedleIgtSecond("weedle/p2f6_noanti/p2f6g3.json", "weedle/p2f6_noanti/p2f6g3_secs.json", false);
+
+        ComparePathScores("weedle/p2f0/p2f0_sec.json", "weedle/p2f7_anti/p2f7g3_sec.json", "p2_anti.json");
     }
 }
