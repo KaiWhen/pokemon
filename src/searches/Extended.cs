@@ -34,9 +34,9 @@ class Extended
         return false;
     }
 
-    static void BuildStates()
+    public static void BuildStates()
     {
-        if(System.IO.File.Exists("basesaves/red/manip/ext/nido_0_0.gqs"))
+        if (System.IO.File.Exists("basesaves/red/manip/ext/nido_0_0.gqs"))
             return;
 
         System.IO.Directory.CreateDirectory("basesaves/red/manip/ext");
@@ -54,11 +54,11 @@ class Extended
         const int numFrames = 3598;
         MultiThread.For(numFrames, gbs, (gb, f) =>
         {
-            if((f + 1) * 100 / numFrames > f * 100 / numFrames) Console.WriteLine("%");
+            if ((f + 1) * 100 / numFrames > f * 100 / numFrames) Console.WriteLine("%");
 
             gb.LoadState(igtState);
-            byte sec = (byte) (f / 60);
-            byte frame = (byte) (f % 60);
+            byte sec = (byte)(f / 60);
+            byte frame = (byte)(f % 60);
             gb.CpuWrite("wPlayTimeMinutes", 5);
             gb.CpuWrite("wPlayTimeSeconds", sec);
             gb.CpuWrite("wPlayTimeFrames", frame);
@@ -67,7 +67,7 @@ class Extended
             int ret;
             ret = gb.Execute(SpacePath(NidoPath));
 
-            if(!CheckEncounter(ret, gb, "NIDORANM", new IGTResult()))
+            if (!CheckEncounter(ret, gb, "NIDORANM", new IGTResult()))
                 return;
 
             gb.ClearText(Joypad.B);
@@ -934,7 +934,7 @@ class Extended
         //         path.SS = r.s9 * 100 + r.s15 * 10 + r.s1 + r.s2;
         //     }
         // }
-        Elapsed("check");
+        // Elapsed("check");
 
         // for(int i = 0; i < stats.Count; ++i)
         // {
@@ -1007,9 +1007,9 @@ class Extended
         Forest[5].Substring(0,120) + "DDDLDDD",
         Forest[6].Substring(0,123) + "LADDADDDDDAU",
     };
-    static SortedSet<int> IgnoredFrames = new SortedSet<int> { 33, 36, 37 };
+    public static SortedSet<int> IgnoredFrames = new SortedSet<int> { 33, 36, 37 };
 
-    static int PathFrame(int path)
+    public static int PathFrame(int path)
     {
         return path > 2 ? path + 1 : path;
     }
