@@ -7,6 +7,7 @@ using System.IO;
 using static SearchCommon;
 using static RbyIGTChecker<Red>;
 using System.Text.Json;
+using System.Net.Http.Headers;
 
 class ExtWeedleSearch
 {
@@ -39,7 +40,7 @@ class ExtWeedleSearch
 
     const string BaseP2Quint = "UAULALLLLAUUU" + "UUUUUURU" + "UUUURRRRUURRRRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLL";
 
-    public static Dictionary<(int hp, int maxhp, int atk, int def), Paths> SingleSearchWeedle(int framesToWait, int igtf, string pidgeypath, string forestpath, int numThreads, int maxcost, int _hp, int _maxhp, string seenFile="", int apress=0)
+    public static Dictionary<(int hp, int maxhp, int atk, int def), Paths> SingleSearchWeedle(int framesToWait, int igtf, string pidgeypath, string forestpath, int numThreads, int maxcost, int _hp, int _maxhp, bool antidote, string seenFile="", int apress=0)
     {
         int p = Extended.FramePath(framesToWait);
         StartWatch();
@@ -83,12 +84,22 @@ class ExtWeedleSearch
         RbyMap forest = gb.Maps[51];
         forest.Sprites.Remove(25, 11);
         Action actions = Action.Right | Action.Left | Action.Up | Action.Down | Action.A | Action.StartB;
-        // Action gateActions = Action.Right | Action.Left | Action.Up | Action.Down;
         RbyTile startTile = gb.Tile;
         RbyTile[] endTiles = { forest[2, 19] };
-        RbyTile[] blockedTiles = {
+
+        RbyTile[] blockedTiles;
+        if (antidote) blockedTiles = new RbyTile[]{
             forest[26, 12], // antidote pickup
-            // forest[25, 11], forest[26, 8], forest[27, 9], // antidote skip
+            forest[16, 10], forest[18, 10],
+            forest[16, 15], forest[18, 15],
+            forest[11, 15], forest[12, 15],
+            forest[11, 4], forest[12, 4],
+            forest[6, 4], forest[8, 4],
+            forest[6, 15], forest[8, 15],
+            forest[1, 22]
+        };
+        else blockedTiles = new RbyTile[]{
+            forest[25, 11], forest[26, 8], forest[27, 9], // antidote skip
             forest[16, 10], forest[18, 10],
             forest[16, 15], forest[18, 15],
             forest[11, 15], forest[12, 15],
@@ -115,7 +126,7 @@ class ExtWeedleSearch
         // var results = new List<SFState<RbyMap, RbyTile>>();
 
         // (int, int)[][] hplists = {
-        //     new (int, int)[] { (20, 22), (20, 23), (21, 23) } // p1?
+        //     new (int, int)[] { (20, 23), (21, 23) } // p1?
         // };
         (int, int)[][] hplists = {
             new (int, int)[] {(12, 21), (13, 21), (14, 22), (14, 23)}, // p2 g
@@ -185,7 +196,6 @@ class ExtWeedleSearch
         {
             MaxCost = maxcost,
             EndTiles = endTiles,
-            TileCallback = (forest[25, 12], gb => gb.PickupItem()),
             FoundCallback = (state, gb) =>
             {
                 // if(state.Log == "UUUULLLLLUUURUUUUUUUUUURRURRURRRRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDLDDDDDLLLLUUU")
@@ -265,6 +275,8 @@ class ExtWeedleSearch
                 }
             }
         };
+
+        if (antidote) parameters.TileCallback = (forest[25, 12], gb => gb.PickupItem());
 
         SingleFrameSearch.StartSearch(gbs, parameters, startTile, 0, state, apress);
         Elapsed("search");
@@ -428,31 +440,31 @@ class ExtWeedleSearch
     {
         // var wpaths = ExtendedWeedle.ReadWeedlePaths();
         // string link = "https://gunnermaniac.com/pokeworld?local=51#21/59/";
-        int igtf = 0;
+        int igtf = 5;
         int numThreads = 6;
         // int hp = 20, maxhp = 23; // p2 g3
         // int hp = 16, maxhp = 22; // p2 g2
         // int hp = 12, maxhp = 21; // p2 g1
 
-        Trace.WriteLine("-----G1-----");
-        int hp1 = 14, maxhp1 = 23; // p2f0 g1
-        SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 6, hp1, maxhp1, "p2a_f58-0_f4-7.json", 1);
+        // Trace.WriteLine("-----G1-----");
+        // int hp1 = 14, maxhp1 = 23; // p2f0 g1
+        // SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 6, hp1, maxhp1, "p2a_f58-0_f4-7.json", 1);
 
-        Trace.WriteLine("-----G3-----");
-        int hp3 = 20, maxhp3 = 22; // p2f0 g3
-        SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 6, hp3, maxhp3, "p2a_f58-0_f4-7.json", 1);
+        // Trace.WriteLine("-----G3-----");
+        // int hp3 = 21, maxhp3 = 23; // p2bf5 g3 4a
+        // SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 8, hp3, maxhp3, false, "p2b_f57-1_f3-8.json", 4);
 
-        Trace.WriteLine("-----G2-----");
-        int hp2 = 15, maxhp2 = 21; // p2f0 g2
-        SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 8, hp2, maxhp2, "p2a_f58-0_f4-7.json", 4);
+        // int hp2 = 12, maxhp2 = 21; // p2bf5 g1 4a 20912.195s
+        int hp2 = 16, maxhp2 = 22; // p2bf5 g3 4a 21 stats 49121.594s
+        SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 8, hp2, maxhp2, false, "p2b_f57-1_f3-8.json", 4);
 
         // p3 test search
         // int hp = 20, maxhp = 22; // p3 g4
         // SingleSearchWeedle(4, igtf, Pidgey[3], null, numThreads, 6, hp, maxhp);
 
         // p1 test search
-        // int hp = 20, maxhp = 22; // p1 g?
-        // SingleSearchWeedle(1, igtf, Pidgey[1], null, numThreads, 6, hp, maxhp);
+        // int hp = 20, maxhp = 23; // p1 g?
+        // SingleSearchWeedle(1, igtf, Pidgey[1], null, numThreads, 6, hp, maxhp, false, apress: 1);
         // Trace.WriteLine("----- FRAME 59 -----");
         // SingleSearchWeedle(1, 59, Pidgey[1], null, numThreads, 6, hp, maxhp);
 
