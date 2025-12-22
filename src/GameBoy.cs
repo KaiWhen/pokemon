@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 public enum LoadFlags : int {
 
@@ -388,18 +389,21 @@ public partial class GameBoy : IDisposable {
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 public delegate Joypad InputGetter();
 
-public static unsafe class Libgambatte {
+public static unsafe partial class Libgambatte {
 
-    public const string dll = "libgambatte.dll";
+    public const string dll = "gambatte";
 
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int gambatte_revision();
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int gambatte_revision();
 
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr gambatte_create();
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial IntPtr gambatte_create();
 
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_destroy(IntPtr gb);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_destroy(IntPtr gb);
 
     /**
 	  * Load ROM image.
@@ -408,8 +412,9 @@ public static unsafe class Libgambatte {
 	  * @param flags    ORed combination of LoadFlags.
 	  * @return 0 on success, negative value on failure.
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int gambatte_load(IntPtr gb, string romfile, LoadFlags flags);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int gambatte_load(IntPtr gb, [MarshalAs(UnmanagedType.LPUTF8Str)] string romfile, LoadFlags flags);
 
     /**
 	  * Load bios image.
@@ -419,8 +424,9 @@ public static unsafe class Libgambatte {
 	  * @param crc       File crc32 requirement or 0.
 	  * @return 0 on success, negative value on failure.
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int gambatte_loadbios(IntPtr gb, string biosfile, int size, int crc);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int gambatte_loadbios(IntPtr gb, [MarshalAs(UnmanagedType.LPUTF8Str)] string biosfile, int size, int crc);
 
     /**
 	  * Emulates until at least 'samples' audio samples are produced in the
@@ -446,23 +452,27 @@ public static unsafe class Libgambatte {
 	  * @return sample offset in audioBuf at which the video frame was completed, or -1
 	  *         if no new video frame was completed.
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int gambatte_runfor(IntPtr gb, byte[] videoBuf, int pitch, byte[] audioBuf, ref int samples);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int gambatte_runfor(IntPtr gb, byte[] videoBuf, int pitch, byte[] audioBuf, ref int samples);
 
     /** adjust the assumed clock speed of the CPU compared to the RTC */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_setrtcdivisoroffset(IntPtr gb, int rtcDivisorOffset);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_setrtcdivisoroffset(IntPtr gb, int rtcDivisorOffset);
 
     /**
 	  * Reset to initial state.
 	  * Equivalent to reloading a ROM image, or turning a Game Boy Color off and on again.
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_reset(IntPtr gb, int samplesToStall);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_reset(IntPtr gb, int samplesToStall);
 
     /** Sets the callback used for getting input state. */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_setinputgetter(IntPtr gb, InputGetter inputgetter);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_setinputgetter(IntPtr gb, InputGetter inputgetter);
 
     /**
 	  * Saves emulator state to the buffer given by 'stateBuf'.
@@ -473,15 +483,18 @@ public static unsafe class Libgambatte {
 	  *               to the next in videoBuf.
 	  * @return size
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int gambatte_savestate(IntPtr gb, byte[] videoBuf, int pitch, byte[] stateBuf);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int gambatte_savestate(IntPtr gb, byte[] videoBuf, int pitch, byte[] stateBuf);
 
     /**
 	  * Loads emulator state from the buffer given by 'stateBuf' of size 'size'.
 	  * @return success
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern bool gambatte_loadstate(IntPtr gb, byte[] stateBuf, int size);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool gambatte_loadstate(IntPtr gb, byte[] stateBuf, int size);
 
     /**
 	  * Read a single byte from the CPU bus. This includes all RAM, ROM, MMIO, etc as
@@ -491,8 +504,9 @@ public static unsafe class Libgambatte {
 	  * @param addr system bus address
 	  * @return byte read
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern byte gambatte_cpuread(IntPtr gb, ushort addr);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial byte gambatte_cpuread(IntPtr gb, ushort addr);
 
     /**
 	  * Write a single byte to the CPU bus. While there is no cycle cost to these
@@ -501,37 +515,45 @@ public static unsafe class Libgambatte {
 	  * @param addr system bus address
 	  * @param val  byte to write
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_cpuwrite(IntPtr gb, ushort addr, byte value);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_cpuwrite(IntPtr gb, ushort addr, byte value);
 
     /** Get reg and flag values. */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_getregs(IntPtr gb, out Registers regs);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_getregs(IntPtr gb, out Registers regs);
 
     /** Set reg and flag values. */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_setregs(IntPtr gb, Registers regs);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_setregs(IntPtr gb, Registers regs);
 
     /**
 	  * Sets addresses the CPU will interrupt processing at before the instruction.
 	  * Format is 0xBBAAAA where AAAA is an address and BB is an optional ROM bank.
 	  */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_setinterruptaddresses(IntPtr gb, int* addrs, int numAddrs);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_setinterruptaddresses(IntPtr gb, int* addrs, int numAddrs);
 
     /** Gets the address the CPU was interrupted at or -1 if stopped normally. */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int gambatte_gethitinterruptaddress(IntPtr gb);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int gambatte_gethitinterruptaddress(IntPtr gb);
 
     /** Returns the current cycle-based time counter as dividers. (2^21/sec) */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern ulong gambatte_timenow(IntPtr gb);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ulong gambatte_timenow(IntPtr gb);
 
     /** Return a value in range 0-3FFF representing current "position" of internal divider */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int gambatte_getdivstate(IntPtr gb);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial int gambatte_getdivstate(IntPtr gb);
 
     /** Sets flags to control non-critical processes for CPU-concerned emulation. */
-    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void gambatte_setspeedupflags(IntPtr gb, SpeedupFlags falgs);
+    [LibraryImport(dll)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void gambatte_setspeedupflags(IntPtr gb, SpeedupFlags falgs);
 }

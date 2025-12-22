@@ -71,8 +71,8 @@ public class ExtendedWeedle
     const string BasePathToSignL = BasePathToGirl + "UUUULUUUUUU";
     const string BasePathToSignR = BasePathToGirl + "UUUUUUUUUUL";
     static string[] Pidgey = { "",
-        BasePath + "UUUUUURUUUULUUUUUUAUUUUUUUUUUUUULLLUUUUUUUUUUURRR",       // 1
-        // BasePath + "UUUUUURUUUULUUUUUUUUUUUUUUUUUUUUULLLUUUUURRRAURAUUU",        // 1 alt
+        // BasePath + "UUUUUURUUUULUUUUUUAUUUUUUUUUUUUULLLUUUUUUUUUUURRR",       // 1
+        BasePath + "UUUUUURUUUULUUUUUUUUUUUUUUUUUUUUULLLUUUUURRRAURAUUU",        // 1 alt
         BasePath + "UUUUUURUUAUULUUUAUUUUUUUUUUUUUUAUULLLUUUUUUURRRRUAUUU",      // 2
         // BasePath + "UUUUUURUUAUULUUUAUUUUUUUUUUUUUAUUULLLUUUUUUURRRRUAUUU",   // 2 early a press
         BasePath + "UUUUUURAUUUUUUUUUUUUUUUUUUUULUAUULLLUUUUUUUUUURRRARU",       // 3
@@ -80,6 +80,10 @@ public class ExtendedWeedle
         BasePath + "UUUUUURUUUULUUUUUUAUUUUUUUUAUUUAUULLLUUUUUUAUURRUUAURR",     // 5
     //  BasePath + "UUUUUURUUUUUUUUUULAUUUUUUUUUUUUUULLLUUAUUUAURRRRAUU",        // 6
         BasePath + "UUUUUURUUUUUUUUUULAUUUUUUUUUUUUULLLAUUUUUUUARRRRAUU",        // 6 "normal turn"
+    };
+    static string[] P1AltPaths = { "",
+        BasePath + "UUUUUURUUUULUUUUUUUUUUUUUUUUUUUUULLLUUUUURRRAURAUUU", // (tried)
+        BasePath + "UUUUUURUUUULUUUUUUAUUUUUUUUUUUUUULLUULUUUUURRURRUAU",
     };
     static string[] Forest = { "",
         "RUULLLLLUUU" + "RUUUUUUU" + "UUUURRRRRURRRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUALLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDDLDLLLLUUU",       // 1
@@ -152,10 +156,10 @@ public class ExtendedWeedle
             result.Add(merged);
         }
 
-        // accept only 3-5 frame window
+        // accept only 3-6 frame window
         if (frames)
         {
-            result = result.Where(g => g.Count >= 3 && g.Count < 6).ToList();
+            result = result.Where(g => g.Count >= 3 && g.Count < 7).ToList();
             result = result.OrderByDescending(g => g.First()).ToList();
             return result;
         }
@@ -173,7 +177,7 @@ public class ExtendedWeedle
             ? end - start + 1
             : 60 - start + end + 1;
     }
-    
+
     static Dictionary<int, List<string>> SortFrameLogs(Dictionary<int, List<string>> frameLogs)
     {
         var res = frameLogs
@@ -184,6 +188,30 @@ public class ExtendedWeedle
         }).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         return res;
+    }
+    
+    static bool HasKCommonSubarray(List<int> list1, List<int> list2, int k)
+    {
+        int len1 = list1.Count(), len2 = list2.Count();
+        int l1 = 0, l2 = 0, r1 = l1 + k-1, r2 = l2 + k-1;
+        while(r1 < len1 && r2 < len2)
+        {
+            if (list1[l1] == list2[l2] && list1[r1] == list2[r2]) return true;
+            else
+            {
+                if (list1[l1] < list2[l2])
+                {
+                    l1++;
+                    r1++;
+                }
+                else
+                {
+                    l2++;
+                    r2++;
+                }
+            }
+        }
+        return false;
     }
 
     public static bool LoadForestState(Red gb, int hp, int maxhp, int path, int igts, int igtf)
@@ -246,7 +274,7 @@ public class ExtendedWeedle
             gb.Press(Joypad.A);
             gb.RunUntil("_Joypad");
             gb.AdvanceFrame();
-            gb.AdvanceFrames(framesToWait);
+            gb.AdvanceFrames(PathFrame(framesToWait));
             gb.Press(Joypad.A);
             // gb.AdvanceFrame();
             gb.Press(Joypad.Start);
@@ -264,7 +292,7 @@ public class ExtendedWeedle
         return true;
     }
 
-    static List<int> CheckWeedle(int p, string forest, int igtf1, int igtf2, int igts, bool print, int atk, int def, int hp, int maxhp, int maxdmg=6, bool antidote=true, List<byte[]> successes = null, int numThreads=6)
+    public static List<int> CheckWeedle(int p, string pathString, string forest, int igtf1, int igtf2, int igts, bool print, int atk, int def, int hp, int maxhp, int maxdmg=6, bool antidote=true, List<byte[]> successes = null, int numThreads=6)
     {
         int numigt = FrameCount(igtf1, igtf2);
         const int weedleframes = 3;
@@ -278,18 +306,13 @@ public class ExtendedWeedle
             int igtf = (igtf1 + it) % 60;
             if (IgnoredFramesP2.Contains(igtf)) return;
             int weedleSuccess = 0;
-            if (!LoadForestState(gb, hp, maxhp, p, igts, igtf))
+            // var npcTracker = new NpcTracker<RedCb>(gb.CallbackHandler);
+            if (!LoadForestState(gb, hp, maxhp, p, pathString, igts, igtf))
                 return;
             int adr;
-            if (antidote)
-            {
-                adr = gb.Execute(SpacePath(forest), (gb.Maps[51][25, 12], gb.PickupItem));
-            }
-            else
-            {
-                adr = gb.Execute(SpacePath(forest));
-            }
+            adr = antidote ? gb.Execute(SpacePath(forest), (gb.Maps[51][25, 12], gb.PickupItem)) : gb.Execute(SpacePath(forest));
             bool enc = false;
+            // string npcs = npcTracker.GetMovement((50, 2), (51, 1), (51, 8));
             if (adr == gb.WildEncounterAddress) {
                 enc = true;
             }
@@ -301,6 +324,7 @@ public class ExtendedWeedle
                 gb.ClearText(1);
                 gb.Inject(Joypad.None);
                 byte[] weedlestate = gb.SaveState();
+                
                 for (int weedleframe = 0; weedleframe < weedleframes; ++weedleframe)
                 {
                     string log = "";
@@ -321,6 +345,16 @@ public class ExtendedWeedle
                     gb.ClearText(Joypad.A);
                     if (gb.BattleMon.HP <= lasthp - 5) crit = true;
                     lasthp = gb.BattleMon.HP;
+
+                    if (atk == 10)
+                    {
+                        gb.Press(Joypad.A, Joypad.Select, Joypad.A); // t2.5
+                        log += LogTurn(gb);
+                        gb.ClearText(Joypad.A);
+                        if (gb.BattleMon.HP <= lasthp - 5) crit = true;
+                        lasthp = gb.BattleMon.HP;
+                    }
+
                     gb.Press(Joypad.A, Joypad.Up, Joypad.A); // t3
                     log += LogTurn(gb);
                     gb.ClearText(Joypad.A);
@@ -344,13 +378,15 @@ public class ExtendedWeedle
             {
                 lock (successfulFrames) successfulFrames.Add(igtf);
             }
+            // Console.WriteLine(npcs);
         });
+        
         SortFrames(successfulFrames);
         foreach (var gb in gbs) gb.Dispose();
         return successfulFrames;
     }
 
-     static (int score, string npc, Dictionary<int, List<string>> frameLogs, int encs, int neighbourSuccess) EvalWeedle(int p, string forest, int igtf1, int igtf2, int igts, int atk, int def, int hp, int maxhp, bool antidote=true, List<byte[]> successes = null, int numThreads = 8)
+    static (int score, string npc, Dictionary<int, List<string>> frameLogs, int encs, int neighbourSuccess) EvalWeedle(int p, string forest, int igtf1, int igtf2, int igts, int atk, int def, int hp, int maxhp, bool antidote=true, List<byte[]> successes = null, int numThreads = 8)
     {
         // check neighbouring frames
         int frameWindow = FrameCount(igtf1, igtf2);
@@ -390,14 +426,7 @@ public class ExtendedWeedle
 
             var npcTracker = new NpcTracker<RedCb>(gb.CallbackHandler);
             int adr;
-            if (antidote)
-            {
-                adr = gb.Execute(SpacePath(forest), (gb.Maps[51][25, 12], gb.PickupItem));
-            }
-            else
-            {
-                adr = gb.Execute(SpacePath(forest));
-            }
+            adr = antidote ? gb.Execute(SpacePath(forest), (gb.Maps[51][25, 12], gb.PickupItem)) : gb.Execute(SpacePath(forest));
             string npcs = npcTracker.GetMovement((50, 2), (51, 1), (51, 8));
             bool enc = false;
             if (adr == gb.WildEncounterAddress)
@@ -448,6 +477,21 @@ public class ExtendedWeedle
                     gb.ClearText(Joypad.A);
                     if (gb.BattleMon.HP <= lasthp - 5) crit = true;
                     lasthp = gb.BattleMon.HP;
+
+                    if (atk == 10)
+                    {
+                        gb.Press(Joypad.A, Joypad.Select, Joypad.A); // t2.5
+                        turn = LogTurn(gb);
+                        log += turn;
+                        if (igtf != f1 && igtf != f2) {
+                            if (turn.Contains(ssMiss)) Increment(ref score);
+                            else if (turn.Contains(ps)) Decrement(ref score);
+                        }
+                        gb.ClearText(Joypad.A);
+                        if (gb.BattleMon.HP <= lasthp - 5) crit = true;
+                        lasthp = gb.BattleMon.HP;
+                    }
+
                     gb.Press(Joypad.A, Joypad.Up, Joypad.A); // t3
                     turn = LogTurn(gb);
                     log += turn;
@@ -539,14 +583,7 @@ public class ExtendedWeedle
 
             var npcTracker = new NpcTracker<RedCb>(gb.CallbackHandler);
             int adr;
-            if (antidote)
-            {
-                adr = gb.Execute(SpacePath(forest), (gb.Maps[51][25, 12], gb.PickupItem));
-            }
-            else
-            {
-                adr = gb.Execute(SpacePath(forest));
-            }
+            adr = antidote ? gb.Execute(SpacePath(forest), (gb.Maps[51][25, 12], gb.PickupItem)) : gb.Execute(SpacePath(forest));
             string npcs = npcTracker.GetMovement((50, 2), (51, 1), (51, 8));
             bool enc = false;
             if (adr == gb.WildEncounterAddress)
@@ -584,6 +621,17 @@ public class ExtendedWeedle
                     gb.ClearText(Joypad.A);
                     if (gb.BattleMon.HP <= lasthp - 5) crit = true;
                     lasthp = gb.BattleMon.HP;
+
+                    if (atk == 10)
+                    {
+                        gb.Press(Joypad.A, Joypad.Select, Joypad.A); // t2.5
+                        turn = LogTurn(gb);
+                        log += turn;
+                        gb.ClearText(Joypad.A);
+                        if (gb.BattleMon.HP <= lasthp - 5) crit = true;
+                        lasthp = gb.BattleMon.HP;
+                    }
+
                     gb.Press(Joypad.A, Joypad.Up, Joypad.A); // t3
                     turn = LogTurn(gb);
                     log += turn;
@@ -631,6 +679,24 @@ public class ExtendedWeedle
             var r1 = Regex.Match(line, @"([0-9]+) ([0-9]+) ([0-9]+)/([0-9]+) p([0-9]+)");
             if (r1.Success)
                 paths.Add((int.Parse(r1.Groups[3].Value), int.Parse(r1.Groups[4].Value), int.Parse(r1.Groups[1].Value), int.Parse(r1.Groups[2].Value)));
+        }
+        return paths;
+    }
+
+    static Dictionary<(int hp, int maxhp, int atk, int def), List<string>> ReadWeedlePaths(string file)
+    {
+        var paths = new Dictionary<(int hp, int maxhp, int atk, int def), List<string>>();
+        foreach(string line in File.ReadAllLines(file))
+        {
+            var r1 = Regex.Match(line, @"([0-9]+) ([0-9]+) ([0-9]+)/([0-9]+) p([0-9]+) - ([0-9]+)/([0-9]+) - (.*) - (.*) - ([LRUDSA_B]+) - ([LRUDSA_B]*)");
+            if (r1.Success)
+            {
+                var currStats = (int.Parse(r1.Groups[3].Value), int.Parse(r1.Groups[4].Value), int.Parse(r1.Groups[1].Value), int.Parse(r1.Groups[2].Value));
+                if (!paths.ContainsKey(currStats)) paths[currStats] = new List<string>();
+                string pathString = r1.Groups[10].Value;
+                if (!paths[currStats].Contains(pathString)) paths[currStats].Add(pathString);
+            }
+
         }
         return paths;
     }
@@ -721,7 +787,7 @@ public class ExtendedWeedle
     {
         var paths = new Dictionary<(int hp, int maxhp, int atk, int def), List<string>>();
         var currStats = (0, 0, 0, 0);
-        foreach (string line in System.IO.File.ReadAllLines(file))
+        foreach (string line in File.ReadAllLines(file))
         {
             var r1 = Regex.Match(line, @"([0-9]+) ([0-9]+) ([0-9]+)/([0-9]+)");
             var r2 = Regex.Match(line, "([LRUDA]+)");
@@ -735,9 +801,11 @@ public class ExtendedWeedle
         return paths;
     }
     
-    void CheckWeedlePaths(int pidgeypath, int igtf1, int igtf2, string inputFile, string outputFile, bool antidote, string unfinished="", int maxdmg=6)
+    void CheckWeedlePaths(int pidgeypath, string pstring, int igtf1, int igtf2, string inputFile, string outputFile, bool antidote, string unfinished="", int maxdmg=6, bool isWPaths=false)
     {
-        var paths = ParseLogs(inputFile);
+        Dictionary<(int hp, int maxhp, int atk, int def), List<string>> paths;
+        if (!isWPaths) paths = ParseLogs(inputFile);
+        else paths = ReadWeedlePaths(inputFile);
         var listener = new TextWriterTraceListener(File.CreateText(outputFile));
         Trace.Listeners.Add(listener);
         Trace.WriteLine("Stats with Paths: " + paths.Count);
@@ -757,7 +825,7 @@ public class ExtendedWeedle
             foreach (var path in stat.Value)
             {
                 Trace.WriteLine(path);
-                var successfulFrames = CheckWeedle(pidgeypath, path, igtf1, igtf2, 30, false, atk, def, hp, maxhp, maxdmg, antidote);
+                var successfulFrames = CheckWeedle(pidgeypath, pstring, path, igtf1, igtf2, 30, false, atk, def, hp, maxhp, maxdmg, antidote);
                 Trace.Write(String.Join(",", successfulFrames));
                 Trace.WriteLine("\n");
                 // if (!frameRes.ContainsKey(stat.Key)) frameRes[stat.Key] = new List<string>();
@@ -866,12 +934,14 @@ public class ExtendedWeedle
         return separated;
     }
 
-    static void FindBestWeedlePaths(string inputFile, string outputFile, int pidgeypath, bool antidote, int tf1, int tf2)
+    public static void FindBestWeedlePaths(string inputFile, string outputFile, int pidgeypath, bool antidote, int tf1, int tf2, int minFrameWindow=3, string p2File="")
     {
         string link = "https://gunnermaniac.com/pokeworld?local=51#21/59/";
         var paths = ParseSuccessfulFrames(inputFile, tf1, tf2);
         var finalPaths = new Dictionary<string, PathInfo>();
         var rejectedPaths = new Dictionary<string, List<PathInfo>>();
+        var p2MissingPaths = new Dictionary<string, PathInfo>();
+        var p2paths = new Dictionary<string, PathInfo>();
         int igtSecDeduction = 3;
 
         List<(int hp, int maxhp, int atk, int def)> seenStats = new List<(int hp, int maxhp, int atk, int def)>();
@@ -892,12 +962,19 @@ public class ExtendedWeedle
             finalPaths = pathData;
         }
 
+        if (File.Exists(p2File))
+        {
+            string json = File.ReadAllText(p2File);
+            p2paths = JsonSerializer.Deserialize<Dictionary<string, PathInfo>>(json);
+        }
+
         foreach (var stat in paths)
         {
             if (seenStats.Count > 0 && seenStats.Contains(stat.Key)) continue;
             Trace.WriteLine(stat.Key);
             // if (stat.Key != (15, 22, 11, 13)) continue;
             int atk = stat.Key.atk, def = stat.Key.def, hp = stat.Key.hp, maxhp = stat.Key.maxhp;
+            string keyString = "(" + hp + "," + maxhp + "," + atk + "," + def + ")";
             // if (stat.Key == (15, 22, 11, 13)) Debugger.Break();
             string bestPath = "";
             int bestScore = -9999;
@@ -916,7 +993,9 @@ public class ExtendedWeedle
                 {
                     int igtf1 = clusters[0][0], igtf2 = clusters[0][clusters[0].Count - 1];
                     int frameWindow = FrameCount(igtf1, igtf2);
-                    if (currLargestWindow >= frameWindow && bestIgtSecs.Count <= 10 && bestEncCount < 2 && bestScore >= 10 && bestPostFight != "") continue;
+                    if (frameWindow < minFrameWindow) continue;
+                    if (p2paths.ContainsKey(keyString) && !HasKCommonSubarray(p2paths[keyString].frames, clusters[0], minFrameWindow)) continue;
+                    if (currLargestWindow >= frameWindow && bestIgtSecs.Count <= 10 && bestEncCount < 2 && bestScore >= 0 && bestPostFight != "") continue;
                     currLargestWindow = Math.Max(currLargestWindow, frameWindow);
                     List<byte[]> states = new List<byte[]>();
                     var res = EvalWeedle(pidgeypath, path.Key, igtf1, igtf2, 30, atk, def, hp, maxhp, antidote, successes: states);
@@ -927,11 +1006,11 @@ public class ExtendedWeedle
                     {
                         string postFight = ExtWeedleSearch.SearchPostWeedle(8, 42, states);
                         igtSecs = CheckWeedleIgtSecond(pidgeypath, path.Key, postFight, igtf1, igtf2, atk, def, hp, maxhp, successes, antidote);
+                        if (igtSecs.Count() > 25) continue;
                         List<List<int>> contiguousSeconds = GroupContiguousIGT(igtSecs, false);
                         int score = res.score;
                         foreach (var group in contiguousSeconds) score -= group.Count * igtSecDeduction;
                         // score += res.s9 * 3;
-                        string keyString = "(" + hp + "," + maxhp + "," + atk + "," + def + ")";
                         if (score > bestScore)
                         {
                             if (bestScore != -9999)
@@ -970,11 +1049,12 @@ public class ExtendedWeedle
                     SortedSet<int> bestClusterIgtSecs = new SortedSet<int>();
                     string bestClusterPostFight = "";
                     int bestClusterEncCount = 2;
-                    string keyString = "(" + hp + "," + maxhp + "," + atk + "," + def + ")";
                     foreach (var cluster in clusters)
                     {
                         int igtf1 = cluster[0], igtf2 = cluster[cluster.Count - 1];
                         int frameWindow = FrameCount(igtf1, igtf2);
+                        if (frameWindow < minFrameWindow) continue;
+                        if (p2paths.ContainsKey(keyString) && !HasKCommonSubarray(p2paths[keyString].frames, cluster, minFrameWindow)) continue;
                         if (currLargestWindow >= frameWindow && bestIgtSecs.Count <= 10 && bestEncCount < 2 && bestScore >= 10 && bestPostFight != "") continue;
                         currLargestWindow = Math.Max(currLargestWindow, frameWindow);
                         List<byte[]> states = new List<byte[]>();
@@ -986,6 +1066,7 @@ public class ExtendedWeedle
                         {
                             string postFight = ExtWeedleSearch.SearchPostWeedle(8, 42, states);
                             igtSecs = CheckWeedleIgtSecond(pidgeypath, path.Key, postFight, igtf1, igtf2, atk, def, hp, maxhp, successes, antidote);
+                            if (igtSecs.Count() > 25) continue;
                             List<List<int>> contiguousSeconds = GroupContiguousIGT(igtSecs, false);
                             int score = res.score;
                             foreach (var group in contiguousSeconds) score -= group.Count * igtSecDeduction;
@@ -1035,20 +1116,33 @@ public class ExtendedWeedle
 
             if (bestPath != "" && bestStates.Count >= 9)
             {
-                // string postFight = ExtWeedleSearch.SearchPostWeedle(8, 42, bestStates);
-                List<string> separatedPaths = SeparateForestPath(bestPath);
-                string keyString = "(" + hp + "," + maxhp + "," + atk + "," + def + ")";
-                if (!finalPaths.ContainsKey(keyString))
+                if (!finalPaths.ContainsKey(keyString) && !File.Exists(p2File))
                 {
                     finalPaths[keyString] = createPathInfo(pidgeypath, bestPath, bestPostFight, bestScore, link, bestNpcs, bestFrames, bestIgtSecs, bestFrameLogs, antidote);
                     using var stream = File.Create(outputFile);
                     JsonSerializer.Serialize(stream, finalPaths, new JsonSerializerOptions { WriteIndented = true });
+                }
+                else if (File.Exists(p2File))
+                {
+                    if (!finalPaths.ContainsKey(keyString) && p2paths.ContainsKey(keyString) && HasKCommonSubarray(p2paths[keyString].frames, bestFrames, minFrameWindow))
+                    {
+                        finalPaths[keyString] = createPathInfo(pidgeypath, bestPath, bestPostFight, bestScore, link, bestNpcs, bestFrames, bestIgtSecs, bestFrameLogs, antidote);
+                        using var stream = File.Create(outputFile);
+                        JsonSerializer.Serialize(stream, finalPaths, new JsonSerializerOptions { WriteIndented = true });
+                    }
+                    else
+                    {
+                        p2MissingPaths[keyString] = createPathInfo(pidgeypath, bestPath, bestPostFight, bestScore, link, bestNpcs, bestFrames, bestIgtSecs, bestFrameLogs, antidote);
+                        using var stream = File.Create(outputFile + "_p2missing.json");
+                        JsonSerializer.Serialize(stream, p2MissingPaths, new JsonSerializerOptions { WriteIndented = true });
+                    }
                 }
             }
         }
         finalPaths.Clear();
         rejectedPaths.Clear();
         paths.Clear();
+        return;
     }
 
     static void RecheckWeedleIgtSecond(string inputFile, string outputFile, bool antidote, int numThreads=6)
@@ -1093,6 +1187,7 @@ public class ExtendedWeedle
         using var stream = File.Create(outputFile);
         JsonSerializer.Serialize(stream, pathData, new JsonSerializerOptions { WriteIndented = true });
         pathData.Clear();
+        return;
     }
 
     static SortedSet<int> CheckWeedleIgtSecond(int p, string path, string postFight, int igtf1, int igtf2, int atk, int def, int hp, int maxhp, int successes, bool antidote, int numThreads=6)
@@ -1143,6 +1238,7 @@ public class ExtendedWeedle
 
         using var stream = File.Create(outputFile);
         JsonSerializer.Serialize(stream, mergedPaths, new JsonSerializerOptions { WriteIndented = true });
+        return;
     }
 
     void MergePaths(string file1, string file2, string outputFile)
@@ -1167,6 +1263,7 @@ public class ExtendedWeedle
 
         using var stream = File.Create(outputFile);
         JsonSerializer.Serialize(stream, mergedPaths, new JsonSerializerOptions { WriteIndented = true });
+        return;
     }
 
     // ignore
@@ -1221,6 +1318,7 @@ public class ExtendedWeedle
         }
         using var stream = File.Create(outputFile);
         JsonSerializer.Serialize(stream, pathData, new JsonSerializerOptions { WriteIndented = true });
+        return;
     }
 
     void FilterPathsByFrames(string inputFile, string outputFile, int f1, int f2)
@@ -1245,6 +1343,7 @@ public class ExtendedWeedle
         }
         using var stream = File.Create(outputFile);
         JsonSerializer.Serialize(stream, newPathData, new JsonSerializerOptions { WriteIndented = true });
+        return;
     }
     
     void TestPidgeyPaths(string file, int f1, int f2, int numThreads=6)
@@ -1277,7 +1376,7 @@ public class ExtendedWeedle
                     for (int f = 0; f < numFrames; f++)
                     {
                         int igtf = (f1 + f) % 60;
-                        if (LoadForestState(gb, hplist[i].hp, hplist[i].maxhp, 1, BasePathToGirl + path, s, igtf)) pathSuccess++;
+                        if (LoadForestState(gb, hplist[i].hp, hplist[i].maxhp, 1, BasePathToGirl + path, s, igtf)) Increment(ref pathSuccess);
                     }
                 }
             });
@@ -1285,9 +1384,65 @@ public class ExtendedWeedle
         }
     }
 
+    Dictionary<string, List<(int hp, int maxhp)>> GetHPGroups(int framesToWait, string path, int numThreads=6)
+    {
+        List<(int hp, int maxhp)> hplist = new List<(int hp, int maxhp)>();
+        Dictionary<string, List<(int hp, int maxhp)>> hpGroups = new Dictionary<string, List<(int hp, int maxhp)>>();
+        for (int hp = 12; hp < 24; hp++)
+            for (int maxhp = 21; maxhp < 24; maxhp++)
+            {
+                if (hp > maxhp) continue;
+                hplist.Add((hp, maxhp));
+            }
+        int hpCount = hplist.Count;
+        RedCb[] gbs = MultiThread.MakeThreads<RedCb>(numThreads);
+        MultiThread.For(hpCount, gbs, (gb, i) =>
+        {
+            int hp = hplist[i].hp, maxhp = hplist[i].maxhp;
+            if (LoadForestState(gb, hplist[i].hp, hplist[i].maxhp, framesToWait, path, 30, 2))
+            {
+                string rng = $"{gb.CpuRead("hRandomAdd"):x2}{gb.CpuRead("hRandomSub"):x2}";
+                if(!hpGroups.ContainsKey(rng))
+                {
+
+                    lock (hpGroups) {
+                        hpGroups[rng] = new List<(int hp, int maxhp)>
+                        {
+                            (hp, maxhp)
+                        };
+                    }
+                }
+                else lock (hpGroups) hpGroups[rng].Add((hp, maxhp));
+            }
+        });
+        
+        return hpGroups;
+    }
+
+    //{gb.CpuRead("hRandomAdd"):x2}{gb.CpuRead("hRandomSub"):x2}
+
     public ExtendedWeedle()
     {
         // CheckWeedlePaths(57, 1, "weedle/p2f0_antiskip/log.txt", "weedle/p2f0_antiskip/p2f0g1_2_frames.txt", false);
+
+        // CheckWeedlePaths(1, P1AltPaths[2], 58, 1, "asdf.txt", "asdfasdf.txt", true);
+
+        // CheckWeedlePaths(3, 15, 25, "weedle/p3af18/p3af18g1.txt", "weedle/p3af18/p3af18g1_f15-25.txt", true);
+
+        // CheckWeedlePaths(1, Pidgey[1], 57, 3, "weedle/p1af0/p1af0g3unfin.txt", "weedle/p1af0/p1af0g3unfin_f57-3.txt", true);
+
+        FindBestWeedlePaths("weedle/p1a_alt/p1a_alt_f0g1_f57-2.txt", "weedle/p1a_alt/p1a_alt_f0g1_f57-2.json", 1, true, 57, 2, p2File: "p2a_f58-0_f3-7.json");
+
+        // CheckWeedlePaths(3, Pidgey[3], 3, 8, "weedle/p3bf5c8/p3bf5g6c8.txt", "weedle/p3bf5c8/p3bf5g6c8_f3-8.txt", false);
+        // FindBestWeedlePaths("weedle/p3bf5c8/p3bf5g6c8_f3-8.txt", "weedle/p3bf5c8/p3bf5g6.json", 3, false, 3, 8, p2File: "p2b_f57-1_f3-8.json");
+
+        // var hpGroups = GetHPGroups(1, Pidgey[1], 1);
+        // foreach(var rng in hpGroups)
+        // {
+        //     Trace.WriteLine(rng.Key);
+        //     string hps = String.Join(", ", rng.Value);
+        //     Trace.WriteLine(hps);
+        // }
 
         // CheckWeedlePaths(2, 57, 1, "weedle/p2f0/p2f0g1/p2f0g1.txt", "weedle/p2f0/p2f0g1/p2f0g1_f57-1.txt", true);
         // CheckWeedlePaths(2, 57, 1, "weedle/p2f0/p2f0g3/p2f0g3.txt", "weedle/p2f0/p2f0g3/p2f0g3_f57-1.txt", true);
@@ -1295,11 +1450,30 @@ public class ExtendedWeedle
 
         // CheckWeedlePaths(2, 3, 8, "weedle/p2bf5/p2bf5g2a4.txt", "weedle/p2bf5/p2bf5g2a4_f3-8.txt", false);
 
+        // CheckWeedlePaths(2, 15, 25, "weedle/p2bf18/p2bf18g2c8.txt", "weedle/p2bf18/p2bf18g2c8_f15-25.txt", false);
+        // CheckWeedlePaths(2, 15, 25, "weedle/p2bf18/p2bf18g3c8.txt", "weedle/p2bf18/p2bf18g3c8_f15-25.txt", false);
+
+        // CheckWeedlePaths(2, 0, 59, "weedle/kink_p2b/10costgroupgframe17.txt", "weedle/kink_p2b/10costgroupgframe17_f0-59.txt", false);
+
+        // CheckWeedlePaths(2, 56, 2, "weedle/p2af0atk10/p2af0g2atk10.txt", "weedle/p2af0atk10/p2af0g2atk10_f56-2.txt", true);
+
+        // FindBestWeedlePaths("weedle/p2bf18/p2bf18g2c8_f15-22.txt", "weedle/p2bf18/p2bf18g2c8.json", 2, false, 16, 24);
+        // FindBestWeedlePaths("weedle/p2bf18/p2bf18g3c8_f15-22.txt", "weedle/p2bf18/p2bf18g3c8.json", 2, false, 16, 24);
+        // FindBestWeedlePaths("weedle/p2af0atk10/p2af0atk10_frames.txt", "weedle/p2af0atk10/p2af0atk10.json", 2, true, 56, 2);
+
+        // CheckWeedlePaths(3, 2, 9, "weedle/p3bf5/p3bf5g5.txt", "weedle/p3bf5/p3bf5g5_f2-9.txt", false);
+        // CheckWeedlePaths(3, 2, 9, "weedle/p3bf5/p3bf5g6.txt", "weedle/p3bf5/p3bf5g6_f2-9.txt", false);
+        // FindBestWeedlePaths("weedle/p3bf5c8/p3bf5g2g3c8_f3-8.txt", "weedle/p3bf5c8/p3bf5g2g3.json", 3, false, 3, 8, p2File: "p2b_f57-1_f3-8.json");
+
+        // CheckWeedlePaths(2, 15, 22, "weedle/kink_p2b/p2bf18.txt", "weedle/kink_p2b/p2bf18_f15-22.txt", false, isWPaths: true);
+
+        // FindBestWeedlePaths("weedle/kink_p2b/p2bf18_f15-22.txt", "weedle/kink_p2b/p2bf18.json", 2, false, 15, 20, 6);
+
         // ReEvaluateScores("weedle/p2f6_noanti/p2f6_reval.json", "weedle/p2f6_noanti/p2f6_reval.json", 2, false);
 
         // FindBestWeedlePaths("weedle/p2bf5/p2bf5g2a4_f3-8.txt", "weedle/p2bf5/p2bf5g2a4.json", 2, false, 4, 7);
 
-        ComparePathsAndMerge("p2b_f57-1_f3-8.json", "weedle/p2f6_noanti/p2f6_reval.json", "p2b_merged_forruns.json");
+        // ComparePathsAndMerge("p2b_f57-1_f3-8.json", "weedle/p2f6_noanti/p2f6_reval.json", "p2b_merged_forruns.json");
 
 
         // CheckWeedlePaths(4, 56, 8, "weedle/p4f0test/p4f0test.txt", "weedle/p4f0test/p4f0test_f56-8.txt", true);
@@ -1309,7 +1483,7 @@ public class ExtendedWeedle
 
         // CheckWeedlePaths(2, 56, 8, "weedle/p2altf0/p2altf0g3.txt", "weedle/p2altf0/p2altf0g3_frames.txt", true);
 
-        // TestPidgeyPaths("p1.txt", 56, 2, 6);
+        // TestPidgeyPaths("p1alt_f56-8.txt", 56, 8, 6);
 
         // Check missing stats
         // var stats = ExtendedWeedle.ReadWeedleStats();

@@ -17,8 +17,8 @@ class ExtWeedleSearch
     const string BasePathToSignL = BasePathToGirl + "UUUULUUUUUU";
     const string BasePathToSignR = BasePathToGirl + "UUUUUUUUUUL";
     static string[] Pidgey = { "",
-        BasePath + "UUUUUURUUUULUUUUUUAUUUUUUUUUUUUULLLUUUUUUUUUUURRR",       // 1
-        // BasePath + "UUUUUURUUUULUUUUUUUUUUUUUUUUUUUUULLLUUUUURRRAURAUUU",        // 1 alt
+        // BasePath + "UUUUUURUUUULUUUUUUAUUUUUUUUUUUUULLLUUUUUUUUUUURRR",       // 1
+        BasePath + "UUUUUURUUUULUUUUUUUUUUUUUUUUUUUUULLLUUUUURRRAURAUUU",        // 1 alt
         BasePath + "UUUUUURUUAUULUUUAUUUUUUUUUUUUUUAUULLLUUUUUUURRRRUAUUU",      // 2
         // BasePath + "UUUUUURUUAUULUUUAUUUUUUUUUUUUUAUUULLLUUUUUUURRRRUAUUU",   // 2 early a press
         BasePath + "UUUUUURAUUUUUUUUUUUUUUUUUUUULUAUULLLUUUUUUUUUURRRARU",       // 3
@@ -26,6 +26,10 @@ class ExtWeedleSearch
         BasePath + "UUUUUURUUUULUUUUUUAUUUUUUUUAUUUAUULLLUUUUUUAUURRUUAURR",     // 5
     //  BasePath + "UUUUUURUUUUUUUUUULAUUUUUUUUUUUUUULLLUUAUUUAURRRRAUU",        // 6
         BasePath + "UUUUUURUUUUUUUUUULAUUUUUUUUUUUUULLLAUUUUUUUARRRRAUU",        // 6 "normal turn"
+    };
+    static string[] P1AltPaths = { "",
+        BasePath + "UUUUUURUUUULUUUUUUUUUUUUUUUUUUUUULLLUUUUURRRAURAUUU", // a
+        BasePath + "UUUUUURUUUULUUUUUUAUUUUUUUUUUUUUULLUULUUUUURRURRUAU", // b
     };
     static string[] Forest = { "",
         "RUULLLLLUUU" + "RUUUUUUU" + "UUUURRRRRURRRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUALLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLLDDDDDDDDDDDDDDDDDDLDLLLLUUU",       // 1
@@ -38,10 +42,16 @@ class ExtWeedleSearch
         null, null, null, null
     };
 
+    private static readonly object checkLock = new object();
+
     const string BaseP2Quint = "UAULALLLLAUUU" + "UUUUUURU" + "UUUURRRRUURRRRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUULLLLLLLLDDDDDDDLLLLUUUUUUUUUUUUULLLLLL";
 
-    public static Dictionary<(int hp, int maxhp, int atk, int def), Paths> SingleSearchWeedle(int framesToWait, int igtf, string pidgeypath, string forestpath, int numThreads, int maxcost, int _hp, int _maxhp, bool antidote, string seenFile="", int apress=0)
+    public static Dictionary<(int hp, int maxhp, int atk, int def), Paths> SingleSearchWeedle(string outputFile, int framesToWait, int igtf, string pidgeypath, string forestpath, int numThreads, int maxcost, int _hp, int _maxhp, bool antidote, string seenFile="", int apress=1)
     {
+        var listener = new TextWriterTraceListener(File.CreateText(outputFile));
+        Trace.Listeners.Add(listener);
+        Trace.AutoFlush = true;
+
         int p = Extended.FramePath(framesToWait);
         StartWatch();
 
@@ -126,13 +136,27 @@ class ExtWeedleSearch
         // var results = new List<SFState<RbyMap, RbyTile>>();
 
         // (int, int)[][] hplists = {
-        //     new (int, int)[] { (20, 23), (21, 23) } // p1?
+        //     new (int, int)[] { (12, 21), (13, 21), (14, 22), (14, 23) }, // p1 g1
+        //     new (int, int)[] { (14, 21), (15, 22), (15, 23), (18, 21), (18, 22), (19, 21), (19, 22), (19, 23), (20, 22), (20, 23), (21, 23) }, // p1 g2
+        //     new (int, int)[] { (15, 21), (16, 21), (16, 22), (16, 23), (17, 21), (17, 22), (17, 23), (18, 23), (21, 21), (22, 22), (23, 23) }, // p1 g3
+        //     new (int, int)[] { (13, 22) }, // p1 g4
         // };
+
         (int, int)[][] hplists = {
-            new (int, int)[] {(12, 21), (13, 21), (14, 22), (14, 23)}, // p2 g
-            new (int, int)[] {(14, 21), (15, 21), (16, 21), (17, 21), (19, 21), (21, 21), (13, 22), (15, 22), (16, 22), (17, 22), (18, 22), (22, 22), (16, 23), (17, 23), (18, 23), (19, 23), (23, 23)}, // p2 y
-            new (int, int)[] {(18, 21), (19, 22), (20, 22), (15, 23), (20, 23), (21, 23)}, // p2 r
+            new (int, int)[] { (12, 21), (13, 21), (14, 22), (14, 23) }, // p1 alt g1
+            new (int, int)[] { (15, 21), (16, 21), (16, 22), (16, 23), (17, 21), (17, 22), (17, 23), (18, 23), (21, 21), (22, 22), (23, 23) }, // p1 alt g2
+            new (int, int)[] { (13, 22), (14, 21), (15, 22), (15, 23), (18, 21), (18, 22), (19, 21), (19, 22), (19, 23), (20, 23) }, // p1 alt g3
+            new (int, int)[] { (20, 22), (21, 23) }, // p1 alt g4
         };
+
+        // (int, int)[][] hplists = {
+        //     new (int, int)[] { (20, 23), (21, 23), (20, 22), (17, 21), (21, 21), (17, 22), (22, 22), (17, 23), (18, 23), (23, 23), (18, 21), (19, 21), (18, 22), (19, 22), (14, 21), (15, 22), (19, 23), (15, 21), (16, 21), (16, 22), (16, 23), (12, 21), (13, 21), (14, 22), (14, 23)} // p1 testing
+        // };
+        // (int, int)[][] hplists = {
+        //     new (int, int)[] {(12, 21), (13, 21), (14, 22), (14, 23)}, // p2 g
+        //     new (int, int)[] {(14, 21), (15, 21), (16, 21), (17, 21), (19, 21), (21, 21), (13, 22), (15, 22), (16, 22), (17, 22), (18, 22), (22, 22), (16, 23), (17, 23), (18, 23), (19, 23), (23, 23)}, // p2 y
+        //     new (int, int)[] {(18, 21), (19, 22), (20, 22), (15, 23), (20, 23), (21, 23)}, // p2 r
+        // };
 
         // (int, int)[][] hplists = {
         //     new (int, int)[] {(15, 21), (16, 21), (16, 22), (16, 23)}, // p3 y
@@ -242,6 +266,16 @@ class ExtWeedleSearch
                         gb.ClearText(Joypad.A);
                         if (gb.BattleMon.HP < hp - 3 || gb.BattleMon.Poisoned) break;
                         lasthp = gb.BattleMon.HP;
+
+                        if (atk == 10)
+                        {
+                            gb.Press(Joypad.A, Joypad.Select, Joypad.A); // t2.5
+                            DoTurn(gb);
+                            gb.ClearText(Joypad.A);
+                            if (gb.BattleMon.HP < hp - 6 || gb.BattleMon.Poisoned) break;
+                            lasthp = gb.BattleMon.HP;
+                        }
+
                         gb.Press(Joypad.A, Joypad.Up, Joypad.A); // t3
                         DoTurn(gb);
                         gb.ClearText(Joypad.A);
@@ -267,10 +301,15 @@ class ExtWeedleSearch
                     }
                     if (weedleframe == weedleframes)
                     {
-                        SearchCommon.Path p = new SearchCommon.Path(state.Log);
-                        Trace.WriteLine(atk + " " + def + " " + hp + "/" + maxhp);
-                        Trace.WriteLine(link + state.Log);
-                        paths[stats[i]].Add(p);
+                        lock (checkLock) {
+                            SearchCommon.Path p = new SearchCommon.Path(state.Log);
+                            Trace.WriteLine(atk + " " + def + " " + hp + "/" + maxhp);
+                            Trace.WriteLine(state.Log);
+                            var frames = ExtendedWeedle.CheckWeedle(Extended.PathFrame(framesToWait), pidgeypath, state.Log, 57, 2, 30, false, atk, def, hp, maxhp, 6, antidote, null, 2);
+                            Trace.WriteLine(String.Join(",", frames));
+                            Trace.WriteLine("\n");
+                            paths[stats[i]].Add(p);
+                        }
                     }
                 }
             }
@@ -285,23 +324,9 @@ class ExtWeedleSearch
         // p2f6g3 40307.168s
         // p2f6g2 120430.18s
 
-        // for(int i = 0; i < stats.Count; ++i)
-        // {
-        //     foreach(Path path in paths[i])
-        //     {
-        //         var r = Weedle(p, path.P, 30, false, stats[i].atk, stats[i].def, stats[i].hp, stats[i].maxhp);
-        //         path.I = r.info;
-        //         path.SS = r.s9 * 100 + r.s15 * 10 + r.s1 + r.s2;
-        //     }
-        // }
-        // Elapsed("check");
+        Trace.Listeners.Remove(listener);
+        listener.Close();
 
-        // for(int i = 0; i < stats.Count; ++i)
-        // {
-        //     Trace.WriteLine(stats[i].atk + " " + stats[i].def + " " + stats[i].hp + "/" + stats[i].maxhp + " p" + p + " (" + maxcost + ")");
-        //     paths[i].RemoveAll(p => p.SS < 770);
-        //     paths[i].PrintAll(link);
-        // }
         return paths;
     }
 
@@ -366,14 +391,15 @@ class ExtWeedleSearch
 
         Red[] gbs = MultiThread.MakeThreads<Red>(numThreads);
         Red gb = gbs[0];
-        if(numThreads == 1)
-            gb.Record("test");
+        // if(numThreads == 1)
+        //     gb.Record("test");
         Elapsed("threads");
 
         int numFrames = ExtendedWeedle.FrameCount(f1, f2);
         int[] frames = new int[numFrames];
         for (int k = 0; k < numFrames; k++) frames[k] = (k + f1) % 60;
         int numigt = (numFrames * 60) - (f2+1+2);
+        Console.WriteLine("numigt:" + numigt);
         IGTResults states = new IGTResults(numigt);
         // List<(int s, int f)> igts = new List<(int s, int f)>();
         MultiThread.For(states.Length, gbs, (gb, i) =>
@@ -412,7 +438,11 @@ class ExtWeedleSearch
         viridian.Sprites.Remove(17, 5);
         RbyTile startTile = gb.Tile;
         RbyTile[] endTiles = { route2[8, 48] };
-        RbyTile[] encounterTiles = { route2[6, 48], route2[7, 48], route2[8, 48], route2[7, 49], route2[8, 49], route2[8, 50] };
+        RbyTile[] encounterTiles = {
+            route2[6, 48], route2[7, 48],
+            route2[8, 48],
+            // route2[7, 49], route2[8, 49], route2[8, 50]
+        };
         Pathfinding.GenerateEdges<RbyMap, RbyTile>(gb, 0, endTiles[0], Action.Right | Action.Left | Action.Up | Action.Down | Action.A | Action.StartB);
         // Pathfinding.DebugDrawEdges(gb, viridian, 0);
 
@@ -426,9 +456,12 @@ class ExtWeedleSearch
             FoundCallback = state =>
             {
                 results.Add(state);
+                // Trace.WriteLine(link + state.Log);
                 Trace.WriteLine(link + state.Log + " Captured: " + state.IGT.TotalSuccesses + " Failed: " + (state.IGT.TotalFailures - state.IGT.TotalRunning) + " NoEnc: " + state.IGT.TotalRunning + " Cost: " + state.WastedFrames);
             }
         };
+
+        if (numThreads == 1) gbs[0].Record("pidgeytest");
 
         DepthFirstSearch.StartSearch(gbs, parameters, startTile, 0, states, 0);
         Elapsed("search");
@@ -440,33 +473,70 @@ class ExtWeedleSearch
     {
         // var wpaths = ExtendedWeedle.ReadWeedlePaths();
         // string link = "https://gunnermaniac.com/pokeworld?local=51#21/59/";
-        int igtf = 5;
+        int igtf = 0;
         int numThreads = 6;
+        int maxcost = 8;
         // int hp = 20, maxhp = 23; // p2 g3
         // int hp = 16, maxhp = 22; // p2 g2
         // int hp = 12, maxhp = 21; // p2 g1
+
+        // test this then comment out
+        int hp1 = 14, maxhp1 = 22; // p1a alt f0 g1
+        SingleSearchWeedle("weedle/p1a_alt/p1a_alt_f0g1.txt", 1, igtf, Pidgey[1], null, numThreads, maxcost, hp1, maxhp1, true, seenFile: "p1a_alt_f58-0.json");
+
+        // run below
+        int hp2 = 22, maxhp2 = 22; // p1a alt f0 g2
+        SingleSearchWeedle("weedle/p1a_alt/p1a_alt_f0g2.txt", 1, igtf, Pidgey[1], null, numThreads, maxcost, hp2, maxhp2, true, seenFile: "p1a_alt_f58-0.json");
+
+        int hp3 = 19, maxhp3 = 22; // p1a alt f0 g3
+        SingleSearchWeedle("weedle/p1a_alt/p1a_alt_f0g3.txt", 1, igtf, Pidgey[1], null, numThreads, maxcost, hp3, maxhp3, true, seenFile: "p1a_alt_f58-0.json");
+
+        int hp4 = 20, maxhp4 = 22; // p1a alt f0 g4
+        SingleSearchWeedle("weedle/p1a_alt/p1a_alt_f0g4.txt", 1, igtf, Pidgey[1], null, numThreads, maxcost, hp4, maxhp4, true, seenFile: "p1a_alt_f58-0.json");
 
         // Trace.WriteLine("-----G1-----");
         // int hp1 = 14, maxhp1 = 23; // p2f0 g1
         // SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 6, hp1, maxhp1, "p2a_f58-0_f4-7.json", 1);
 
         // Trace.WriteLine("-----G3-----");
-        // int hp3 = 21, maxhp3 = 23; // p2bf5 g3 4a
-        // SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 8, hp3, maxhp3, false, "p2b_f57-1_f3-8.json", 4);
+        // int hp3 = 19, maxhp3 = 22; // p2bf18 g3 (remaining) c8 17247.805s
+        // SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 8, hp3, maxhp3, false, "p2b_f57-1_f3-8.json");
+
+        // Trace.WriteLine("-----G2-----");
+
+        // int hp2 = 22, maxhp2 = 22; // p2bf18 g2 (remaining) c8 35739.902s
+        // SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 8, hp2, maxhp2, false, "p2b_f57-1_f3-8.json");
 
         // int hp2 = 12, maxhp2 = 21; // p2bf5 g1 4a 20912.195s
-        int hp2 = 16, maxhp2 = 22; // p2bf5 g3 4a 21 stats 49121.594s
-        SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 8, hp2, maxhp2, false, "p2b_f57-1_f3-8.json", 4);
+        // int hp2 = 16, maxhp2 = 22; // p2bf5 g3 4a 21 stats 49121.594s
+        // SingleSearchWeedle(2, igtf, Pidgey[2], null, numThreads, 8, hp2, maxhp2, false, "p2b_f57-1_f3-8.json", 4);
 
-        // p3 test search
-        // int hp = 20, maxhp = 22; // p3 g4
-        // SingleSearchWeedle(4, igtf, Pidgey[3], null, numThreads, 6, hp, maxhp);
+        // ExtendedWeedle.FindBestWeedlePaths("weedle/p3bf5/p3bf5g3_f2-9.txt", "weedle/p3bf5/p3bf5g3.json", 3, false, 3, 8, p2File: "p2b_f57-1_f3-8.json");
+
+        // p3 search
+        // int hp = 19, maxhp = 22; // p3b f5 g2 43918.734s
+        // int hp = 22, maxhp = 22; // p3b f5 g3 search: 44058.664s
+        // int hp6 = 15, maxhp6 = 23; // p3b f5 g6
+        // int hp3 = 22, maxhp3 = 22; // p3b f5 g3 c8 80589.734s (32 stats 22hrs)
+        // int hp2 = 19, maxhp2 = 22; // p3b f5 g2 c8  79160.22s
+        // int hp = 16, maxhp = 22; // p3b f5 g1 c8 42199.902s (17 stats 11.72 hrs)
+        // int hp = 20, maxhp = 22; // p3b f5 g4 c8 36928.113s (14 stats 10.25 hrs)
+        // int hp = 15, maxhp = 23; // p3b f5 g5 c8 43198.453s (17 stats 12 hrs)
+        // SingleSearchWeedle(3, igtf, Pidgey[3], null, numThreads, 8, hp, maxhp, false, "weedle/p3bf5/p3bf5.json");
+
+        // Trace.WriteLine("-----GROUP5-----");
+
+        // int hp = 14, maxhp = 23; // p3b f5 g5
+        // SingleSearchWeedle(3, igtf, Pidgey[3], null, numThreads, 6, hp, maxhp, false);
+
 
         // p1 test search
         // int hp = 20, maxhp = 23; // p1 g?
-        // SingleSearchWeedle(1, igtf, Pidgey[1], null, numThreads, 6, hp, maxhp, false, apress: 1);
-        // Trace.WriteLine("----- FRAME 59 -----");
-        // SingleSearchWeedle(1, 59, Pidgey[1], null, numThreads, 6, hp, maxhp);
+        // SingleSearchWeedle(1, 0, P1AltPaths[2], null, numThreads, 6, hp, maxhp, true);
+
+        // p3a f18 test search
+        // int hp = 16, maxhp = 22; // p3 g1
+        // SingleSearchWeedle(3, igtf, Pidgey[3], null, numThreads, 6, hp, maxhp, true);
 
 
         // p4
@@ -484,7 +554,7 @@ class ExtWeedleSearch
         // }
 
         // alt p1 search
-        // SearchPidgeyAlt(1, BasePathToGirl, 56, 2, numThreads, 6, 6);
+        // SearchPidgeyAlt(1, BasePathToGirl, 55, 8, numThreads, 4, 8);
 
         // alt p2 search
         // SearchPidgeyAlt(2, BasePathToGirl, 56, 8, numThreads, -1, 8);
