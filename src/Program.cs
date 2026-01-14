@@ -12,12 +12,13 @@ using System.Numerics;
 class Program {
 
     static void Main(string[] args) {
-        Trace.Listeners.Add(new TextWriterTraceListener(File.CreateText("log.txt")));
-        Trace.AutoFlush = true;
+        // Trace.Listeners.Add(new TextWriterTraceListener(File.CreateText("log.txt")));
+        // Trace.AutoFlush = true;
 
         // Tests.RunAllTests();
 
         new ExtendedWeedle();
         // new ExtWeedleSearch();
+        // new MoonRocket();
     }
 }
